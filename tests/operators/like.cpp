@@ -11,6 +11,11 @@ TEST_CASE("Like operator") {
     struct Pattern {
         std::string value;
     };
+    
+    struct Vocabulary {
+        std::string text;
+        int count = 0;
+    };
 
     auto storage = make_storage("",
                                 make_table("users",
@@ -19,7 +24,30 @@ TEST_CASE("Like operator") {
                                 make_table("patterns", make_column("value", &Pattern::value)));
     storage.sync_schema();
 
-    storage.insert(User{0, "Sia"});
+    //  INSERT INTO users('name')
+    //  VALUES('Sia')
+    //  ON CONFLICT DO NOTHING
+    storage.insert(User{0, "Sia"}/*, on_conflict().do_nothing())*/);
+    
+    //  INSERT INTO users('name')
+    //  VALUES('Sia')
+    //  ON CONFLICT ('word')
+    //  DO UPDATE SET count = count + 1
+    //storage.insert(User{0, "Sia"}, on_conflict(&Vocabulary::word).do_(update_all(set(c(&Vocabulary::count) = c(&Vocabulary::count) + 1))));
+    
+    //  INSERT INTO users('name')
+    //  VALUES('Sia')
+    //  ON CONFLICT ('word')
+    //  WHERE count IS NOT NULL
+    //  DO UPDATE SET count = count + 1
+    //storage.insert(User{0, "Sia"}, on_conflict(&Vocabulary::word, where(is_not_null(&Vocabulary::count))).do_(update_all(set(c(&Vocabulary::count) = c(&Vocabulary::count) + 1))));
+    
+    
+    //  INSERT INTO users('name')
+    //  VALUES('Sia')
+    //  ON CONFLICT
+    //  DO UPDATE SET count = count + 1
+    //storage.insert(User{0, "Sia"}, on_conflict().do_(update_all(set(c(&Vocabulary::count) = c(&Vocabulary::count) + 1))));
     storage.insert(User{0, "Stark"});
     storage.insert(User{0, "Index"});
 
