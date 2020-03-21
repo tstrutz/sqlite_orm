@@ -19,6 +19,9 @@ struct on_conflict_t {
     optional_container<D> details;
     optional_container<U> operation;
 };
+
+template<class T, class... Wargs>
+struct update_all_t;
     
 template<class D>
 struct on_conflict_intermediate_t {
@@ -28,8 +31,8 @@ struct on_conflict_intermediate_t {
         return {std::move(this->details)};
     }
     
-    template<class... Args, class... Wargs>
-    on_conflict_t<D, update_all_t<set_t<Args...>, Wargs...>> do_update(internal::set_t<Args...> set, Wargs... wh) {
+    template<class... Args, class... Wargs, class U = update_all_t<set_t<Args...>, Wargs...>>
+    on_conflict_t<D, U> do_update(internal::set_t<Args...> set, Wargs... wh) {
         using update_statement_t = update_all_t<set_t<Args...>, Wargs...>;
         using args_tuple = std::tuple<Wargs...>;
         internal::validate_conditions<args_tuple>();
@@ -45,12 +48,12 @@ inline internal::on_conflict_intermediate_t<void> on_conflict() {
 }
 
 template<class ...Cols>
-internal::on_conflict_intermediate_t<internal::on_coflict_details<void, Cols...>> on_conflict(internal::columns_t<Cols...> &columns) {
+internal::on_conflict_intermediate_t<internal::on_coflict_details<void, Cols...>> on_conflict(internal::columns_t<Cols...> columns) {
     return {std::move(columns)};
 }
 
 template<class C, class ...Cols>
-internal::on_conflict_intermediate_t<internal::on_coflict_details<conditions::where_t<C>, Cols...>> on_conflict(internal::columns_t<Cols...> &columns, conditions::where_t<C> wh) {
+internal::on_conflict_intermediate_t<internal::on_coflict_details<conditions::where_t<C>, Cols...>> on_conflict(internal::columns_t<Cols...> columns, conditions::where_t<C> wh) {
     return {std::move(columns), std::move(wh)};
 }
 

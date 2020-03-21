@@ -22,13 +22,13 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
-        template<class T>
-        struct expression_object_type<replace_t<T>> {
+        template<class T, class D, class U>
+        struct expression_object_type<replace_t<T, D, U>> {
             using type = typename std::decay<T>::type;
         };
 
-        template<class T>
-        struct expression_object_type<replace_t<std::reference_wrapper<T>>> {
+        template<class T, class D, class U>
+        struct expression_object_type<replace_t<std::reference_wrapper<T>, D, U>> {
             using type = typename std::decay<T>::type;
         };
 
@@ -90,9 +90,9 @@ namespace sqlite_orm {
             return obj(t);
         }
 
-        template<class T>
-        struct get_object_t<replace_t<T>> {
-            using expression_type = replace_t<T>;
+        template<class T, class D, class U>
+        struct get_object_t<replace_t<T, D, U>> {
+            using expression_type = replace_t<T, D, U>;
 
             template<class O>
             auto &operator()(O &e) const {

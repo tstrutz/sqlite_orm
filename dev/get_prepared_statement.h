@@ -95,14 +95,14 @@ namespace sqlite_orm {
         return internal::get_ref(statement.t.obj);
     }
 
-    template<int N, class T>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+    template<int N, class T, class D, class U>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T, D, U>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.t.obj);
     }
 
-    template<int N, class T>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+    template<int N, class T, class D, class U>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, D, U>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.t.obj);
     }

@@ -490,6 +490,9 @@ namespace sqlite_orm {
                 return ss.str();
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+            
+            template<class... Args>
+            std::string string_from_expression(const set_t<Args...> &st
 
             template<class... Args, class... Wargs>
             std::string string_from_expression(const update_all_t<set_t<Args...>, Wargs...> &upd,
@@ -731,8 +734,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T>
-            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
+            template<class T, class D, class U>
+            std::string string_from_expression(const replace_t<T, D, U> &rep, bool /*noTableName*/) const {
                 using expression_type = typename std::decay<decltype(rep)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
                 this->assert_mapped_type<object_type>();
@@ -758,6 +761,43 @@ namespace sqlite_orm {
                     } else {
                         ss << ")";
                     }
+                }
+                ss << " ON CONFLICT ";
+                auto onConflictColumnsCount = 0;
+                rep.oc.details.apply([&onConflictColumnsCount](auto &detail){
+                    onConflictColumnsCount = detail.columns.count;
+                });
+                if(onConflictColumnsCount) {
+                    ss << "(";
+                    std::vector<std::string> onConflictColumnNames;
+                    onConflictColumnNames.reserve(onConflictColumnsCount);
+                    rep.oc.details.apply([&onConflictColumnNames, this](auto &detail){
+                        iterate_tuple(detail.columns, [&onConflictColumnNames, this](auto &column){
+                            auto columnName = this->string_from_extrassion(column, false);
+                            onConflictColumnNames.push_back(move(columnName)));
+                        });
+                    });
+                    for(size_t i = 0; i < onConflictColumnNames.size(); ++i){
+                        auto &columnName = onConflictColumnNames[i];
+                        ss << columnName;
+                        if(i < onConflictColumnNames.size() - 1) {
+                            ss << ", ";
+                        } else {
+                            ss << ")";
+                        }
+                    }
+                    ss << " ";
+                }
+                ss << "DO ";
+                using operation_type = typename std::decay<decltype(rep.oc.operation)>::type::type;
+                const bool isNothing = std::is_same<operation_type, void>::value;
+                if(!isNothing){
+                    rep.oc.operation.apply([&ss, this](auto &operation){
+                        ss << "UPDATE ";
+                        ff
+                    });
+                }else{
+                    ss << "NOTHING";
                 }
                 return ss.str();
             }
@@ -1528,10 +1568,10 @@ namespace sqlite_orm {
              *  also you this function instead of insert cause inserts ignores
              *  id and creates own one.
              */
-            template<class O>
-            void replace(const O &o) {
+            template<class O, class D = void, class U = void>
+            void replace(const O &o, on_conflict_t<D, U> oc = {}) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::replace(std::ref(o)));
+                auto statement = this->prepare(sqlite_orm::replace(std::ref(o), std::move(oc)));
                 this->execute(statement);
             }
 
@@ -1912,8 +1952,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
-            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
+            template<class T, class D, class U>
+            prepared_statement_t<replace_t<T, D, U>> prepare(replace_t<T, D, U> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2082,8 +2122,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
-            void execute(const prepared_statement_t<replace_t<T>> &statement) {
+            template<class T, class D, class U>
+            void execute(const prepared_statement_t<replace_t<T, D, U>> &statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;

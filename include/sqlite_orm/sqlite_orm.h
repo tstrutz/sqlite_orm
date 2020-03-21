@@ -7025,6 +7025,71 @@ namespace sqlite_orm {
 
 // #include "select_constraints.h"
 
+// #include "on_conflict.h"
+
+
+// #include "optional_container.h"
+
+// #include "select_constraints.h"
+
+// #include "conditions.h"
+
+
+namespace sqlite_orm {
+
+namespace internal {
+
+template<class W, class ...Cols>
+struct on_coflict_details {
+    columns_t<Cols...> columns;
+    optional_container<W> where_expression;
+};
+
+template<class D, class U>
+struct on_conflict_t {
+    optional_container<D> details;
+    optional_container<U> operation;
+};
+
+template<class T, class... Wargs>
+struct update_all_t;
+    
+template<class D>
+struct on_conflict_intermediate_t {
+    optional_container<D> details;
+    
+    on_conflict_t<D, void> do_nothing() {
+        return {std::move(this->details)};
+    }
+    
+    template<class... Args, class... Wargs, class U = update_all_t<set_t<Args...>, Wargs...>>
+    on_conflict_t<D, U> do_update(internal::set_t<Args...> set, Wargs... wh) {
+        using update_statement_t = update_all_t<set_t<Args...>, Wargs...>;
+        using args_tuple = std::tuple<Wargs...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Wargs>(wh)...};
+        update_statement_t update_statement{std::move(set), move(conditions)};
+        return {std::move(this->details), std::move(update_statement)};
+    }
+};
+}
+
+inline internal::on_conflict_intermediate_t<void> on_conflict() {
+    return {};
+}
+
+template<class ...Cols>
+internal::on_conflict_intermediate_t<internal::on_coflict_details<void, Cols...>> on_conflict(internal::columns_t<Cols...> columns) {
+    return {std::move(columns)};
+}
+
+template<class C, class ...Cols>
+internal::on_conflict_intermediate_t<internal::on_coflict_details<conditions::where_t<C>, Cols...>> on_conflict(internal::columns_t<Cols...> columns, conditions::where_t<C> wh) {
+    return {std::move(columns), std::move(wh)};
+}
+
+}
+
 
 namespace sqlite_orm {
 
@@ -7203,11 +7268,12 @@ namespace sqlite_orm {
             columns_type columns;
         };
 
-        template<class T>
+        template<class T, class D, class U>
         struct replace_t {
             using type = T;
 
             type obj;
+            on_conflict_t<D, U> oc;
         };
 
         template<class It>
@@ -7250,9 +7316,9 @@ namespace sqlite_orm {
      *  Parameter obj is accepted by value. Is you want to accept it by ref
      *  the use std::ref function: storage.replace(std::ref(myUserInstance));
      */
-    template<class T>
-    internal::replace_t<T> replace(T obj) {
-        return {std::move(obj)};
+    template<class T, class D = void, class U = void>
+    internal::replace_t<T, D, U> replace(T obj, internal::on_conflict_t<D, U> oc = {}) {
+        return {std::move(obj), std::move(oc)};
     }
 
     /**
@@ -8963,13 +9029,13 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
-        template<class T>
-        struct expression_object_type<replace_t<T>> {
+        template<class T, class D, class U>
+        struct expression_object_type<replace_t<T, D, U>> {
             using type = typename std::decay<T>::type;
         };
 
-        template<class T>
-        struct expression_object_type<replace_t<std::reference_wrapper<T>>> {
+        template<class T, class D, class U>
+        struct expression_object_type<replace_t<std::reference_wrapper<T>, D, U>> {
             using type = typename std::decay<T>::type;
         };
 
@@ -9031,9 +9097,9 @@ namespace sqlite_orm {
             return obj(t);
         }
 
-        template<class T>
-        struct get_object_t<replace_t<T>> {
-            using expression_type = replace_t<T>;
+        template<class T, class D, class U>
+        struct get_object_t<replace_t<T, D, U>> {
+            using expression_type = replace_t<T, D, U>;
 
             template<class O>
             auto &operator()(O &e) const {
@@ -10125,8 +10191,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T>
-            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
+            template<class T, class D, class U>
+            std::string string_from_expression(const replace_t<T, D, U> &rep, bool /*noTableName*/) const {
                 using expression_type = typename std::decay<decltype(rep)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
                 this->assert_mapped_type<object_type>();
@@ -10922,10 +10988,10 @@ namespace sqlite_orm {
              *  also you this function instead of insert cause inserts ignores
              *  id and creates own one.
              */
-            template<class O>
-            void replace(const O &o) {
+            template<class O, class D = void, class U = void>
+            void replace(const O &o, on_conflict_t<D, U> oc = {}) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::replace(std::ref(o)));
+                auto statement = this->prepare(sqlite_orm::replace(std::ref(o), std::move(oc)));
                 this->execute(statement);
             }
 
@@ -11306,8 +11372,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
-            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
+            template<class T, class D, class U>
+            prepared_statement_t<replace_t<T, D, U>> prepare(replace_t<T, D, U> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -11476,8 +11542,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
-            void execute(const prepared_statement_t<replace_t<T>> &statement) {
+            template<class T, class D, class U>
+            void execute(const prepared_statement_t<replace_t<T, D, U>> &statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -12426,14 +12492,14 @@ namespace sqlite_orm {
         return internal::get_ref(statement.t.obj);
     }
 
-    template<int N, class T>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+    template<int N, class T, class D, class U>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T, D, U>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.t.obj);
     }
 
-    template<int N, class T>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+    template<int N, class T, class D, class U>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, D, U>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.t.obj);
     }
@@ -12495,64 +12561,4 @@ namespace sqlite_orm {
         });
         return internal::get_ref(*result);
     }
-}
-#pragma once
-
-// #include "optional_container.h"
-
-// #include "select_constraints.h"
-
-// #include "conditions.h"
-
-
-namespace sqlite_orm {
-
-namespace internal {
-
-template<class W, class ...Cols>
-struct on_coflict_details {
-    columns_t<Cols...> columns;
-    optional_container<W> where_expression;
-};
-
-template<class D, class U>
-struct on_conflict_t {
-    optional_container<D> details;
-    optional_container<U> operation;
-};
-    
-template<class D>
-struct on_conflict_intermediate_t {
-    optional_container<D> details;
-    
-    on_conflict_t<D, void> do_nothing() {
-        return {std::move(this->details)};
-    }
-    
-    template<class... Args, class... Wargs>
-    on_conflict_t<D, update_all_t<set_t<Args...>, Wargs...>> do_update(internal::set_t<Args...> set, Wargs... wh) {
-        using update_statement_t = update_all_t<set_t<Args...>, Wargs...>;
-        using args_tuple = std::tuple<Wargs...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Wargs>(wh)...};
-        update_statement_t update_statement{std::move(set), move(conditions)};
-        return {std::move(this->details), std::move(update_statement)};
-    }
-};
-}
-
-inline internal::on_conflict_intermediate_t<void> on_conflict() {
-    return {};
-}
-
-template<class ...Cols>
-internal::on_conflict_intermediate_t<internal::on_coflict_details<void, Cols...>> on_conflict(internal::columns_t<Cols...> &columns) {
-    return {std::move(columns)};
-}
-
-template<class C, class ...Cols>
-internal::on_conflict_intermediate_t<internal::on_coflict_details<conditions::where_t<C>, Cols...>> on_conflict(internal::columns_t<Cols...> &columns, conditions::where_t<C> wh) {
-    return {std::move(columns), std::move(wh)};
-}
-
 }

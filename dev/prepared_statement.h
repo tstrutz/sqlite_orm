@@ -8,6 +8,7 @@
 
 #include "connection_holder.h"
 #include "select_constraints.h"
+#include "on_conflict.h"
 
 namespace sqlite_orm {
 
@@ -186,11 +187,12 @@ namespace sqlite_orm {
             columns_type columns;
         };
 
-        template<class T>
+        template<class T, class D, class U>
         struct replace_t {
             using type = T;
 
             type obj;
+            on_conflict_t<D, U> oc;
         };
 
         template<class It>
@@ -233,9 +235,9 @@ namespace sqlite_orm {
      *  Parameter obj is accepted by value. Is you want to accept it by ref
      *  the use std::ref function: storage.replace(std::ref(myUserInstance));
      */
-    template<class T>
-    internal::replace_t<T> replace(T obj) {
-        return {std::move(obj)};
+    template<class T, class D = void, class U = void>
+    internal::replace_t<T, D, U> replace(T obj, internal::on_conflict_t<D, U> oc = {}) {
+        return {std::move(obj), std::move(oc)};
     }
 
     /**
