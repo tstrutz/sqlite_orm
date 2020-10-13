@@ -1,6 +1,6 @@
 # Defaults
 os: linux
-dist: xenial
+dist: focal
 
 matrix:
   include:
@@ -47,7 +47,6 @@ matrix:
       addons:
         homebrew:
           packages:
-            - catch2
             - ninja
           update: true
 
@@ -58,7 +57,6 @@ matrix:
         homebrew:
           packages:
             - llvm
-            - catch2
             - ninja
           update: true
       env:
@@ -78,7 +76,6 @@ matrix:
         homebrew:
           packages:
             - gcc@6
-            - catch2
             - ninja
           update: true
       env:
@@ -121,7 +118,6 @@ matrix:
       addons:
         homebrew:
           packages:
-            - catch2
             - ninja
           update: true
 
@@ -132,7 +128,6 @@ matrix:
         homebrew:
           packages:
             - llvm
-            - catch2
             - ninja
           update: true
       env:
@@ -147,20 +142,7 @@ matrix:
         - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
 before_install:
-  - |
-    if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
-      export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Use coreutils from homebrew.
-    fi
-
-install:
-  - |
-    # Catch2 test framework
-    if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then
-      git clone --depth=1 --quiet https://github.com/catchorg/Catch2.git
-      cd Catch2
-      cmake -Bbuild -H. -DBUILD_TESTING=OFF
-      sudo env "PATH=$PATH" cmake --build ./build --target install
-    fi
+  - if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"; fi
 
 # scripts to run before build
 before_script:

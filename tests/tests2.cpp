@@ -3,8 +3,6 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <list>
-#include <deque>
 
 using namespace sqlite_orm;
 
@@ -256,58 +254,6 @@ TEST_CASE("Select") {
     REQUIRE(storage.get<Word>(firstId).currentWord == "ototo");
 }
 
-TEST_CASE("select asterisk") {
-    using Catch::Matchers::UnorderedEquals;
-
-    struct Employee {
-        int id;
-        std::string name;
-        int age;
-        std::string address;  //  optional
-        double salary;  //  optional
-    };
-
-    auto storage = make_storage({},
-                                make_table("COMPANY",
-                                           make_column("ID", &Employee::id, primary_key()),
-                                           make_column("NAME", &Employee::name),
-                                           make_column("AGE", &Employee::age),
-                                           make_column("ADDRESS", &Employee::address),
-                                           make_column("SALARY", &Employee::salary)));
-    storage.sync_schema();
-
-    //  create employees..
-    Employee paul{-1, "Paul", 32, "California", 20000.0};
-    Employee allen{-1, "Allen", 25, "Texas", 15000.0};
-    Employee teddy{-1, "Teddy", 23, "Norway", 20000.0};
-    Employee mark{-1, "Mark", 25, "Rich-Mond", 65000.0};
-    Employee david{-1, "David", 27, "Texas", 85000.0};
-    Employee kim{-1, "Kim", 22, "South-Hall", 45000.0};
-    Employee james{-1, "James", 24, "Houston", 10000.0};
-
-    //  insert employees. `insert` function returns id of inserted object..
-    paul.id = storage.insert(paul);
-    allen.id = storage.insert(allen);
-    teddy.id = storage.insert(teddy);
-    mark.id = storage.insert(mark);
-    david.id = storage.insert(david);
-    kim.id = storage.insert(kim);
-    james.id = storage.insert(james);
-
-    auto allEmployeesTuples = storage.select(asterisk<Employee>());
-
-    std::vector<std::tuple<int, std::string, int, std::string, double>> expected;
-
-    expected.push_back(std::make_tuple(paul.id, "Paul", 32, "California", 20000.0));
-    expected.push_back(std::make_tuple(allen.id, "Allen", 25, "Texas", 15000.0));
-    expected.push_back(std::make_tuple(teddy.id, "Teddy", 23, "Norway", 20000.0));
-    expected.push_back(std::make_tuple(mark.id, "Mark", 25, "Rich-Mond", 65000.0));
-    expected.push_back(std::make_tuple(david.id, "David", 27, "Texas", 85000.0));
-    expected.push_back(std::make_tuple(kim.id, "Kim", 22, "South-Hall", 45000.0));
-    expected.push_back(std::make_tuple(james.id, "James", 24, "Houston", 10000.0));
-    REQUIRE_THAT(allEmployeesTuples, UnorderedEquals(expected));
-}
-
 TEST_CASE("Replace query") {
     struct Object {
         int id;
@@ -456,67 +402,4 @@ TEST_CASE("Insert") {
     REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
     storage.insert(ObjectWithoutRowid{20, "Death"});
     REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
-}
-
-namespace get_all_deque {
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-
-    bool operator==(const User &lhs, const User &rhs) {
-        return lhs.id == rhs.id && lhs.name == rhs.name;
-    }
-}
-
-TEST_CASE("get_all deque") {
-    using namespace get_all_deque;
-    using Catch::Matchers::UnorderedEquals;
-
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
-    storage.sync_schema();
-
-    User user1{1, "Nicki"};
-    User user2{2, "Karol"};
-    storage.replace(user1);
-    storage.replace(user2);
-
-    std::vector<User> expected;
-    expected.push_back(user1);
-    expected.push_back(user2);
-    {
-        auto users = storage.get_all<User>();
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::vector<User>>::value, "");
-    }
-    {
-        auto users = storage.get_all<User, std::deque<User>>();
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::deque<User>>::value, "");
-    }
-    {
-        auto users = storage.get_all<User, std::list<User>>();
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::list<User>>::value, "");
-    }
-    {
-        auto statement = storage.prepare(get_all<User>());
-        auto users = storage.execute(statement);
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::vector<User>>::value, "");
-    }
-    {
-        auto statement = storage.prepare(get_all<User, std::deque<User>>());
-        auto users = storage.execute(statement);
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::deque<User>>::value, "");
-    }
-    {
-        auto statement = storage.prepare(get_all<User, std::list<User>>());
-        auto users = storage.execute(statement);
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::list<User>>::value, "");
-    }
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
@@ -13,6 +13,9 @@
 #include "storage_traits.h"
 
 namespace sqlite_orm {
+
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
 
     namespace internal {
 
@@ -223,8 +226,13 @@ namespace sqlite_orm {
             using type = typename storage_traits::storage_mapped_columns<St, T>::type;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, object_t<T>, void> {
+            using type = T;
+        };
+
         template<class St, class T, class E>
-        struct column_result_t<St, conditions::cast_t<T, E>, void> {
+        struct column_result_t<St, cast_t<T, E>, void> {
             using type = T;
         };
 
@@ -234,17 +242,17 @@ namespace sqlite_orm {
         };
 
         template<class St, class A, class T, class E>
-        struct column_result_t<St, conditions::like_t<A, T, E>, void> {
+        struct column_result_t<St, like_t<A, T, E>, void> {
             using type = bool;
         };
 
         template<class St, class A, class T>
-        struct column_result_t<St, conditions::glob_t<A, T>, void> {
+        struct column_result_t<St, glob_t<A, T>, void> {
             using type = bool;
         };
 
         template<class St, class C>
-        struct column_result_t<St, conditions::negated_condition_t<C>, void> {
+        struct column_result_t<St, negated_condition_t<C>, void> {
             using type = bool;
         };
 
