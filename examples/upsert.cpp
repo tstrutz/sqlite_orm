@@ -15,6 +15,6 @@ int main() {
                                            make_column("count", &Vocabulary::count, default_value(1))));
     storage.sync_schema();
     
-    storage.replace(Vocabulary{"jovial"}, on_conflict().do_nothing());;
+    storage.replace(Vocabulary{"jovial"}, on_conflict().do_nothing());
     return 0;
 }

@@ -53,7 +53,7 @@ internal::on_conflict_intermediate_t<internal::on_coflict_details<void, Cols...>
 }
 
 template<class C, class ...Cols>
-internal::on_conflict_intermediate_t<internal::on_coflict_details<conditions::where_t<C>, Cols...>> on_conflict(internal::columns_t<Cols...> columns, conditions::where_t<C> wh) {
+internal::on_conflict_intermediate_t<internal::on_coflict_details<internal::where_t<C>, Cols...>> on_conflict(internal::columns_t<Cols...> columns, internal::where_t<C> wh) {
     return {std::move(columns), std::move(wh)};
 }
 

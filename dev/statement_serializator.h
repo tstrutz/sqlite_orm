@@ -776,9 +776,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct statement_serializator<replace_t<T>, void> {
-            using statement_type = replace_t<T>;
+        template<class T, class D, class U>
+        struct statement_serializator<replace_t<T, D, U>, void> {
+            using statement_type = replace_t<T, D, U>;
 
             template<class C>
             std::string operator()(const statement_type &rep, const C &context) const {
@@ -807,6 +807,43 @@ namespace sqlite_orm {
                         ss << ")";
                     }
                 }
+                /*ss << " ON CONFLICT ";
+                auto onConflictColumnsCount = 0;
+                rep.oc.details.apply([&onConflictColumnsCount](auto &detail){
+                    onConflictColumnsCount = detail.columns.count;
+                });
+                if(onConflictColumnsCount) {
+                    ss << "(";
+                    std::vector<std::string> onConflictColumnNames;
+                    onConflictColumnNames.reserve(onConflictColumnsCount);
+                    rep.oc.details.apply([&onConflictColumnNames, this](auto &detail){
+                        iterate_tuple(detail.columns, [&onConflictColumnNames, this](auto &column){
+                            auto columnName = this->string_from_extrassion(column, false);
+                            onConflictColumnNames.push_back(move(columnName));
+                        });
+                    });
+                    for(size_t i = 0; i < onConflictColumnNames.size(); ++i){
+                        auto &columnName = onConflictColumnNames[i];
+                        ss << columnName;
+                        if(i < onConflictColumnNames.size() - 1) {
+                            ss << ", ";
+                        } else {
+                            ss << ")";
+                        }
+                    }
+                    ss << " ";
+                }
+                ss << "DO ";
+                using operation_type = typename std::decay<decltype(rep.oc.operation)>::type::type;
+                const bool isNothing = std::is_same<operation_type, void>::value;
+                if(!isNothing){
+                    rep.oc.operation.apply([&ss, this](auto &operation){
+                        ss << "UPDATE ";
+//                        ff
+                    });
+                }else{
+                    ss << "NOTHING";
+                }*/
                 return ss.str();
             }
         };
