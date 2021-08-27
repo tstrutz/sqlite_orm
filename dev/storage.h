@@ -232,6 +232,7 @@ namespace sqlite_orm {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::update(std::ref(o)));
                 this->execute(statement);
+                statement.con.release();
             }
 
             template<class... Args, class... Wargs>
@@ -330,7 +331,9 @@ namespace sqlite_orm {
             O get(Ids... ids) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get<O>(std::forward<Ids>(ids)...));
-                return this->execute(statement);
+                auto res = this->execute(statement);
+                statement.con.release();
+                return res;
             }
 
             /**

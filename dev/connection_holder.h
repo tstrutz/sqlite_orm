@@ -65,15 +65,25 @@ namespace sqlite_orm {
             }
 
             ~connection_ref() {
-                this->holder.release();
+                if(this->needToReleaseInDtor){
+                    this->holder.release();
+                }
             }
 
             sqlite3* get() const {
                 return this->holder.get();
             }
+            
+            void release() {
+                if(this->needToReleaseInDtor){
+                    this->holder.release();
+                    this->needToReleaseInDtor = false;
+                }
+            }
 
           protected:
             connection_holder& holder;
+            bool needToReleaseInDtor = true;
         };
     }
 }

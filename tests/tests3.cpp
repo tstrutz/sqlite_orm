@@ -415,3 +415,58 @@ TEST_CASE("Escape chars") {
     storage.update(selena);
     storage.remove<Employee>(10);
 }
+
+#include <thread>
+#include <iostream>
+
+TEST_CASE("issue718") {
+    struct TestModel {
+        int id;
+        int counter;
+    };
+    int connectionTimeout = 60000; // 1 minute
+    int threadCount = 20;
+    int loopCount = 10000;
+    int reportFrequency = 500;
+    int opsPerSecPerThread = 500;
+    auto storage = make_storage("crash.sqlite",
+                                make_table("TEST",
+                                           make_column("ID", &TestModel::id, primary_key()),
+                                           make_column("COUNTER", &TestModel::counter)));
+    storage.sync_schema();
+    storage.open_forever();
+    storage.sync_schema(true);
+    storage.busy_timeout(connectionTimeout);
+    storage.remove_all<TestModel>();
+    TestModel testModel{1, 0};
+    storage.insert(testModel);
+    
+    std::vector<std::thread> workers;
+    for (int i = 0; i < threadCount; i++) {
+        workers.push_back(std::thread([&, i]() {
+            int threadNo = i;
+            for (int j = 0; j < loopCount; j++) {
+                TestModel model;
+                try {
+                    model = storage.get<TestModel>(testModel.id);
+                }catch(...){
+                    std::cout << "get fired an exception" << std::endl;
+                    continue;
+                }
+                model.counter++;
+                try {
+                    storage.update(model);
+                }catch(...){
+                    std::cout << "update fired an exception" << std::endl;
+                    continue;
+                }
+                if (j % reportFrequency == 0) {
+                    std::cout << "[Thread " << threadNo << "] " << ((float)j / loopCount) * 100 << "%\n";
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds((int)ceil((float)1000 / opsPerSecPerThread)));
+            }
+        }));
+    }
+
+    std::for_each(workers.begin(), workers.end(), [](std::thread &t) { t.join(); });
+}
